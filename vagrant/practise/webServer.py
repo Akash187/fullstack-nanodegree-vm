@@ -1,8 +1,8 @@
-#server imports
+# server imports
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 import cgi
 
-#database imports
+# database imports
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from database_setup import Base, Restaurant
@@ -11,6 +11,7 @@ engine = create_engine('sqlite:///restaurantmenu.db')
 Base.metadata.bind = engine
 DBSession = sessionmaker(bind=engine)
 session = DBSession()
+
 
 class WebServerHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -22,16 +23,16 @@ class WebServerHandler(BaseHTTPRequestHandler):
                 output = ""
                 output += "<html><body>"
                 for item in session.query(Restaurant).all():
-                    output += "<h2 style='margin:0;'>%s</h2>" %(item.name)
-                    output += "<a href='/restaurants/%d/edit'>Edit</a>" %(item.id)
+                    output += "<h2 style='margin:0;'>%s</h2>" % (item.name)
+                    output += "<a href='/restaurants/%d/edit'>Edit</a>" % (item.id)
                     output += "</br>"
-                    output += "<a href='#'>Delete</a>"
+                    output += "<a href='restaurants/%d/delete'>Delete</a>" % (item.id)
                     output += "<div style='margin-bottom:20px'></div>"
                 session.close()
                 output += '<a href="restaurants/new"><h2>Make a New Restaurant Here</h2></a>'
                 output += "</body></html>"
                 self.wfile.write(output)
-                #print output
+                # print output
                 return
 
             if self.path.endswith("/restaurants/new"):
@@ -49,21 +50,38 @@ class WebServerHandler(BaseHTTPRequestHandler):
                 return
 
             if self.path.endswith("/edit"):
-                x = self.path.rindex('/') #give the last indexof '/' in path
+                # extracting id from path
+                x = self.path.rindex('/')  # give the last indexof '/' in path(e.g:- /restaurants/12/edit)
                 restaurant_id = self.path[13:x]
-                #print("id : " + restaurant_id)
+                # print("id : " + restaurant_id)
                 self.send_response(200)
                 self.send_header('Content-type', 'text/html')
                 self.end_headers()
-
-                restaurant = session.query(Restaurant).filter_by(id= restaurant_id).one()
-
+                restaurant = session.query(Restaurant).filter_by(id=restaurant_id).one()
                 output = ""
                 output += "<html><body>"
-                output += "<h1>Rename Restaurant :- %s</h1>" %(restaurant.name)
-                output += "<form method = 'POST' enctype='multipart/form-data' action =  %s>" %(self.path)
+                output += "<h1>Rename Restaurant :- %s</h1>" % (restaurant.name)
+                output += "<form method = 'POST' enctype='multipart/form-data' action =  %s>" % (self.path)
                 output += "<input name = 'updateRestaurantName' type = 'text' placeholder = 'New Name' > "
                 output += "<input type='submit' value='rename'>"
+                output += "</form></body></html>"
+                self.wfile.write(output)
+                return
+
+            if self.path.endswith("/delete"):
+                # extracting id from path
+                x = self.path.rindex('/')  # give the last indexof '/' in path(e.g:- /restaurants/12/edit)
+                restaurant_id = self.path[13:x]
+                # print("id : " + restaurant_id)
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html')
+                self.end_headers()
+                restaurant = session.query(Restaurant).filter_by(id=restaurant_id).one()
+                output = ""
+                output += "<html><body>"
+                output += "<h1>Are you sure you want to delete %s?</h1>" % (restaurant.name)
+                output += "<form method = 'POST' enctype='multipart/form-data' action =  %s>" % (self.path)
+                output += "<input type='submit' value='delete'>"
                 output += "</form></body></html>"
                 self.wfile.write(output)
                 return
@@ -95,19 +113,18 @@ class WebServerHandler(BaseHTTPRequestHandler):
                         self.end_headers()
 
             if self.path.endswith("/edit"):
-                print(self.path)
-                #extracting id from path
+                # extracting id from path
                 x = self.path.rindex('/')  # give the last indexof '/' in path(e.g:- /restaurants/12/edit)
                 restaurant_id = self.path[13:x]
-                print(restaurant_id)
+
                 ctype, pdict = cgi.parse_header(
                     self.headers.getheader('content-type'))
                 if ctype == 'multipart/form-data':
                     fields = cgi.parse_multipart(self.rfile, pdict)
                     newName = fields.get('updateRestaurantName')
-                    print(newName)
+
                     if len(newName[0]) != 0:
-                        restaurantName = session.query(Restaurant).filter_by(id = restaurant_id).one()
+                        restaurantName = session.query(Restaurant).filter_by(id=restaurant_id).one()
                         restaurantName.name = newName[0]
                         session.add(restaurantName)
                         session.commit()
@@ -119,6 +136,18 @@ class WebServerHandler(BaseHTTPRequestHandler):
                         self.send_response(301)
                         self.send_header('Location', '/restaurants')
                         self.end_headers()
+
+            if self.path.endswith("/delete"):
+                # extracting id from path
+                x = self.path.rindex('/')  # give the last indexof '/' in path(e.g:- /restaurants/12/edit)
+                restaurant_id = self.path[13:x]
+                restaurantName = session.query(Restaurant).filter_by(id=restaurant_id).one()
+                session.delete(restaurantName)
+                session.commit()
+
+                self.send_response(301)
+                self.send_header('Location', '/restaurants')
+                self.end_headers()
         except:
             pass
 
