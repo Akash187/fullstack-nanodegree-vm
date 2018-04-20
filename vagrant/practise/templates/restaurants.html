@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Restaurants</title>
+</head>
+<body>
+<br>
+{% for restaurant in restaurants %}
+    <h2>{{ restaurant.name }}</h2>
+    <br>
+    <a href="{{ url_for('editRestaurant', restaurant_id = restaurant.id) }}">Edit</a>
+    <br>
+    <a href="{{ url_for('deleteRestaurant', restaurant_id = restaurant.id) }}" >Delete</a>
+    <div style="margin-bottom: 20px"></div>
+{% endfor %}
+</body>
+</html>
